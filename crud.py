@@ -47,6 +47,10 @@ def authenticate_user(db: Session, username: str, password: str):
         return False
     return user
 
+def get_role_by_name(db: Session, name: str):
+    '''get user by role'''
+    return db.query(DBRole).filter(DBRole.name == name).first()
+
 def create_role(db: Session, name: str, description: str = ""):
     """Create a new role."""
     db_role = DBRole(name=name, description=description)

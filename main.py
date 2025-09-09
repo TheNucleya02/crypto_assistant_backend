@@ -8,21 +8,34 @@ from analysis import (
     writer,
     llm,
 )
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
-from sqlalchemy.orm import Session
-from database import get_db
-import crud
 from auth import (
    create_access_token, get_current_active_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from models import User, UserCreate, Ticker
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from models import User, UserCreate, Ticker,PortfolioEntry
+from fastapi.middleware.cors import CORSMiddleware
+from database import get_db, PortfolioEntryDB
+from models import PortfolioEntryOut
+from sqlalchemy.orm import Session
+from datetime import timedelta
 from datetime import datetime
+import crud
 import time
+import httpx
+
+
 
 app = FastAPI(title="FastAPI Authentication with Database", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change to your frontend domain in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -66,6 +79,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+# Get active user Info - profile
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """Get current user information."""
@@ -75,8 +89,9 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 async def protected_route(current_user: User = Depends(get_current_active_user)):
     return {"message": f"Hello {current_user.full_name}, this is a protected route!"}
 
+# Get the summay of Crypto
 @app.post("/summary/")
-def final_summary(ticker: Ticker) -> str:
+def final_summary(ticker: Ticker, current_user: User = Depends(get_current_active_user)) -> str:
     symbol = ticker.ticker
     get_news_analysis = Task(
         description=f"Use the search tool to get news for the {symbol} cryptocurrency. The current date is {datetime.now()}. Compose the results into a helpful report",
@@ -114,3 +129,89 @@ def final_summary(ticker: Ticker) -> str:
         return str(results)
     except Exception as e:
         return f"❌ Error generating summary for {symbol}: {e}"
+    
+# Utility: fetch current price from CoinGecko
+async def get_current_price(symbol: str):
+    url = f"https://api.coingecko.com/api/v3/simple/price"
+    params = {"ids": symbol.lower(), "vs_currencies": "usd"}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params=params)
+        data = response.json()
+    return data.get(symbol.lower(), {}).get("usd", None)
+
+
+# Add entry
+@app.post("/portfolio/add")
+def add_entry(entry: PortfolioEntry, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    db_entry = PortfolioEntryDB(**entry.dict())
+    db.add(db_entry)
+    db.commit()
+    db.refresh(db_entry)
+    return {"message": "✅ Entry added", "data": db_entry}
+
+
+# Get all entries with current value & P/L
+@app.get("/portfolio", response_model=list[PortfolioEntryOut])
+async def get_portfolio(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    portfolio = db.query(PortfolioEntryDB).all()
+    results = []
+
+    for entry in portfolio:
+        current_price = await get_current_price(str(entry.symbol))
+        if not current_price:
+            current_price = 0
+
+        invested_value = entry.amount * entry.buy_price
+        current_value = entry.amount * current_price
+        profit_loss = current_value - invested_value
+
+        results.append({
+            "id": entry.id,
+            "symbol": entry.symbol,
+            "amount": entry.amount,
+            "buy_price": entry.buy_price,
+            "current_price": current_price,
+            "invested_value": invested_value,
+            "current_value": current_value,
+            "profit_loss": profit_loss
+        })
+
+    return {"portfolio": results}
+
+
+# Get entry by ID with current price & P/L
+@app.get("/portfolio/{entry_id}", )
+async def get_entry(entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    entry = db.query(PortfolioEntryDB).filter(PortfolioEntryDB.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    current_price = await get_current_price(str(entry.symbol))
+    if not current_price:
+        current_price = 0
+
+    invested_value = entry.amount * entry.buy_price
+    current_value = entry.amount * current_price
+    profit_loss = current_value - invested_value
+
+    return {
+        "id": entry.id,
+        "symbol": entry.symbol,
+        "amount": entry.amount,
+        "buy_price": entry.buy_price,
+        "current_price": current_price,
+        "invested_value": invested_value,
+        "current_value": current_value,
+        "profit_loss": profit_loss
+    }
+
+
+# Delete entry
+@app.delete("/portfolio/{entry_id}")
+def delete_entry(entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    entry = db.query(PortfolioEntryDB).filter(PortfolioEntryDB.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"message": "🗑️ Entry deleted"}

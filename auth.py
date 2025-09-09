@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from database import get_db, DBUser
 from models import User, UserInDB
 import crud
+import os
 
 # Configuration
-SECRET_KEY = "SECRET"
+SECRET_KEY = os.getenv("SECRET")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

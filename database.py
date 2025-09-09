@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Table, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, DateTime, Table, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import func
@@ -40,6 +40,14 @@ class DBRole(Base):
     description = Column(String)
 
     users = relationship("DBUser", secondary=user_roles, back_populates="roles")
+
+class PortfolioEntryDB(Base):
+    __tablename__ = "portfolio"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True)
+    amount = Column(Float)
+    buy_price = Column(Float)
 
 # Create tables
 Base.metadata.create_all(bind=engine)
