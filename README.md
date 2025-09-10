@@ -73,7 +73,7 @@ Built with modern Python technologies, this backend integrates with external API
 ## 📂 Project Structure
 
 ```
-crypto-assistant-backend/
+crypto-assistant
 
 ```
 
@@ -89,7 +89,7 @@ crypto-assistant-backend/
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/your-username/crypto-assistant-backend.git
-cd crypto-assistant-backend
+cd crypto-assistant
 ```
 
 ### 2. Create Virtual Environment

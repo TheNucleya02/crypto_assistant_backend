@@ -17,10 +17,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from models import User, UserCreate, Ticker,PortfolioEntry
 from fastapi.middleware.cors import CORSMiddleware
 from database import get_db, PortfolioEntryDB
-from models import PortfolioEntryOut
+from models import PortfolioListResponse
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from datetime import datetime
+from typing import List
 import crud
 import time
 import httpx
@@ -151,7 +152,7 @@ def add_entry(entry: PortfolioEntry, db: Session = Depends(get_db), current_user
 
 
 # Get all entries with current value & P/L
-@app.get("/portfolio", response_model=list[PortfolioEntryOut])
+@app.get("/portfolio", response_model=PortfolioListResponse)
 async def get_portfolio(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     portfolio = db.query(PortfolioEntryDB).all()
     results = []

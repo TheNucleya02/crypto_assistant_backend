@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator, EmailStr
 import string
-
+from typing import List
 
 class User(BaseModel):
     username: str = Field(..., min_length=2, max_length=15)
@@ -51,7 +51,7 @@ class PortfolioEntry(BaseModel):
     class Config:
         orm_mode = True
 
-class PortfolioEntryOut(BaseModel):
+class PortfolioResponse(BaseModel):
     id: int
     symbol: str
     amount: float
@@ -61,5 +61,8 @@ class PortfolioEntryOut(BaseModel):
     current_value: float
     profit_loss: float
 
-    class Config:
-        orm_mode = True
+class PortfolioListResponse(BaseModel):
+    portfolio: List[PortfolioResponse]
+
+class Config:
+    from_attributes = True
