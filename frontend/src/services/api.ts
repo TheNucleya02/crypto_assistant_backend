@@ -101,6 +101,7 @@ export async function fetchPortfolio(): Promise<PortfolioEntry[]> {
     return data.portfolio.map(fromBackendPortfolio);
   }
 
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from(PORTFOLIO_TBL)
     .select("*")
@@ -125,6 +126,7 @@ export async function addPortfolioEntry(input: {
     return fromBackendPortfolio(data.data);
   }
 
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from(PORTFOLIO_TBL)
     .insert([input])
@@ -140,6 +142,7 @@ export async function deletePortfolioEntry(id: string): Promise<void> {
     return;
   }
 
+  if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase.from(PORTFOLIO_TBL).delete().eq("id", id);
   if (error) throw error;
 }
@@ -149,6 +152,7 @@ const THREADS_TBL = "chat_threads";
 const MESSAGES_TBL = "chat_messages";
 
 export async function fetchThreads(): Promise<ChatThread[]> {
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from(THREADS_TBL)
     .select("*")
@@ -158,6 +162,7 @@ export async function fetchThreads(): Promise<ChatThread[]> {
 }
 
 export async function createThread(title: string): Promise<ChatThread> {
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from(THREADS_TBL)
     .insert([{ title }])
@@ -168,11 +173,13 @@ export async function createThread(title: string): Promise<ChatThread> {
 }
 
 export async function deleteThread(id: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase.from(THREADS_TBL).delete().eq("id", id);
   if (error) throw error;
 }
 
 export async function renameThread(id: string, title: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase
     .from(THREADS_TBL)
     .update({ title, updated_at: new Date().toISOString() })
@@ -181,6 +188,7 @@ export async function renameThread(id: string, title: string): Promise<void> {
 }
 
 export async function resetThread(id: string, title: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase not configured");
   await supabase.from(MESSAGES_TBL).delete().eq("thread_id", id);
   await supabase
     .from(THREADS_TBL)
@@ -189,6 +197,7 @@ export async function resetThread(id: string, title: string): Promise<void> {
 }
 
 export async function fetchMessages(threadId: string): Promise<ChatMessage[]> {
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from(MESSAGES_TBL)
     .select("*")
@@ -203,6 +212,7 @@ export async function addMessage(
   role: "user" | "assistant",
   content: string
 ): Promise<ChatMessage> {
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from(MESSAGES_TBL)
     .insert([{ thread_id: threadId, role, content }])
